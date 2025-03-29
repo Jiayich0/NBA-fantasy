@@ -1,0 +1,18 @@
+<!-- Este template sirve para mostrar toda la información de una liga, con
+la lista de participantes. Necesita dos variables:
+    * "liga": objeto de tipo Liga.
+    * "participaciones": pagina de objetos ParticipaLiga.
+    * "num_participantes": numero de participantes en esa liga.
+-->
+{% from "bootstrap5/pagination.html" import render_pagination %}
+{% from "macro_mostrar_liga.html" import mostrar_liga_completa %}
+
+{% extends "base_with_navbar.html" %}
+
+{% block title %}
+Liga - {{ liga.id }}
+{% endblock %}
+
+{% block content %}
+    {{ mostrar_liga_completa(liga, pagina_participaciones, num_participantes) }}
+{% endblock %}

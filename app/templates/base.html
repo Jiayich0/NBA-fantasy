@@ -1,0 +1,51 @@
+{% from "bootstrap5/utils.html" import render_messages %}
+<!doctype html>
+<html lang="es">
+    <head>
+        {% block head %}
+        <!-- Definicion de meta tags -->
+        <meta charset="utf-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
+
+        {% block styles %}
+            <!-- Bootstrap CSS -->
+            {{ bootstrap.load_css() }}
+        {% endblock %}
+
+        <!-- Titulo de la aplicacion -->
+        <title>
+        {% block title %}Titulo Placeholder{% endblock %}
+        </title>
+
+        <!-- Imagenes de la aplicacion -->
+        <link rel="icon" href="{{ url_for('static', filename='nba-logo.png') }}" type="image/x-icon">
+
+        {% endblock %}
+    </head>
+    <body>
+
+    <!-- Permitimos opcionalmente introducir una barra de navegacion -->
+        {% block navbar %}{% endblock %}
+
+        <!-- Metemos el renderizado de flash dentro de un bloque, por si queremos modificarlo -->
+        {% block content_with_flash %}
+
+            <!-- Metemos los mensajes flash en un contenedor para controlar las opciones de estilo -->
+            <div class="container mx-auto mt-3 mb-3">
+            <!-- Renderizamos mensajes flash -->
+            {{ render_messages() }}
+            </div>
+
+            <!-- Contenido de la pagina -->
+            {% block content %}{% endblock %}
+
+        {% endblock %}
+
+        {% block scripts %}
+            <!-- JavaScript (opcional) -->
+            {{ bootstrap.load_js() }}
+        {% endblock %}
+
+
+    </body>
+</html>

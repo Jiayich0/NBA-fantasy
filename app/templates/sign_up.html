@@ -1,0 +1,29 @@
+<!-- Template para mostrar el formulario de registro en la aplicacion.
+  Unicamente necesita la variable "form", que es una instancia
+  del formulario de registro.
+-->
+
+{% extends "base_with_navbar.html" %}
+{% from "bootstrap5/form.html" import render_form %}
+
+{% block title %}
+Registrarse
+{% endblock %}
+
+{% block content %}
+
+<h1 class="text-center"> Registrarse </h1>
+
+<div class="container-fluid">
+  <div class="row justify-content-center">
+    <div class="col-6">
+    {{ render_form(form) }}
+    </div>
+  </div>
+  <div class="row justify-content-center">
+    <div class="col-6 mt-4">
+    <a class="btn btn-primary form-control" href={{ url_for('sign_in') }} >Sign In</a>
+    </div>
+  </div>
+</div>
+{% endblock %}

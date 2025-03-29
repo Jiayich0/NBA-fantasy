@@ -1,0 +1,41 @@
+{% extends "base_with_navbar.html" %}
+{% from "bootstrap5/form.html" import render_form %}
+{% from "macro_mostrar_liga.html" import mostrar_liga %}
+
+{% block title %}
+Perfil - {{ usuario.email }}
+{% endblock %}
+
+{% block content %}
+<h1 class="text-center"> Mi Perfil </h1>
+
+<div class="container-fluid">
+  <div class="row justify-content-center">
+    <div class="col-6">
+      {% if usuario.cumple %}
+      <p><b>Fecha de nacimiento:</b> {{ usuario.cumple }}</p>
+      {% endif %}
+    </div>
+  </div>
+
+  <div class="row justify-content-center">
+    <div class="col-6">
+      <p><b>Última tirada diaria:</b> {{ usuario.ultima_tirada if usuario.ultima_tirada else "No ha tirado aún" }}</p>
+    </div>
+  </div>
+
+  <h2 class="text-center">Mis Ligas</h2>
+  <div class="container">
+    {% for liga in usuario.ligas %}
+      {{ mostrar_liga(liga, num_usuarios[liga.id], True) }}
+    {% else %}
+      <p class="text-center">No estás en ninguna liga.</p>
+    {% endfor %}
+  </div>
+
+  <h2 class="text-center mt-4">
+    <a href="{{ url_for('mostrar_ligas') }}">Ver Todas las Ligas</a>
+  </h2>
+
+</div>
+{% endblock %}

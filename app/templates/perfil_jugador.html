@@ -1,0 +1,61 @@
+<!-- Template que muestra el perfil de un jugador. Debe instanciar las
+siguientes variables:
+ * "jugador": objeto Jugador
+ * "lista_historico_partido": lista de objetos Historico asociados a ese jugador, ordenados por fecha descendente
+ -->
+
+{% extends "base_with_navbar.html" %}
+{% from "macro_mostrar_historico.html" import mostrar_historico %}
+{% from "bootstrap5/pagination.html" import render_pagination %}
+
+
+{% block title %}
+Perfil Jugador - {{ jugador.nombre }}
+{% endblock %}
+
+
+{% block content %}
+<h1 class="text-center"> Perfil de {{ jugador.nombre }} </h1>
+
+<div class="container-fluid">
+
+  <div class="row justify-content-center">
+    <div class="col-5 mt-1">
+        <img src={{ jugador.url_imagen }} class="img-fluid" >
+    </div>
+  </div>
+
+  <div class="row justify-content-center">
+    <div class="col-6 mt-4 mb-3 d-flex justify-content-center">
+      <h3> Equipo: {{ jugador.nombre_equipo }} </h3>
+    </div>
+  </div>
+  <div class="row justify-content-center">
+    <div class="col-6">
+      <p><b>Posición:</b> {{ jugador.posicion }} </p>
+    </div>
+  </div>
+  <div class="row justify-content-center">
+    <div class="col-6 ">
+      <p><b>Altura:</b> {{ jugador.altura }}cm </p>
+    </div>
+  </div>
+  <div class="row d-flex justify-content-center ">
+    <div class="col-6">
+      <p><b>Fecha de Nacimiento:</b> {{ jugador.fecha_nacimiento }} </p>
+    </div>
+  </div>
+  <div class="row justify-content-center">
+    <div class="col-6">
+      <p><b>País:</b> {{ jugador.pais }} </p>
+    </div>
+  </div>
+  <h2 class="text-center my-3"> Histórico de Partidos </h2>
+  <div class="row justify-content-center">
+    <div class="col-12">
+      {{ mostrar_historico(lista_historico_partido, jugador.nombre_equipo) }}
+
+    </div>
+  </div>
+</div>
+{% endblock %}

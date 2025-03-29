@@ -1,0 +1,49 @@
+<!-- Este template sirve para mostrar todas las cartas asociadas a una liga
+de un usuario concreto. Necesita instanciar varios parámetros:
+    * id_usuario: id del usuario a considerar.
+    * id_liga: id de la liga a considerar.
+    * "paginacion_carta_liga": paginacion del objeto CartaLiga
+    * "id2carta": diccionario que vincula el campo id_jugador de CartaLiga
+        con un objeto Carta.
+    * "id2jugador": diccionario que vincula el campo id_jugador de CartaLiga
+        con un objeto Jugador.
+-->
+
+{% from "bootstrap5/pagination.html" import render_pagination %}
+{% from "macro_mostrar_liga.html" import mostrar_liga_completa %}
+{% from "macro_mostrar_carta.html" import mostrar_carta %}
+
+{% extends "base_with_navbar.html" %}
+
+{% block title %}
+    Cartas del Usuario {{ id_usuario }} en la Liga {{ id_liga }}
+{% endblock %}
+
+{% block content %}
+<h1 class="text-center mb-4"> Lista de Cartas del Usuario
+    {{ id_usuario }} en la Liga {{ id_liga }} </h1>
+
+<div class="container-fluid">
+  {% for carta_liga in paginacion_carta_liga %}
+    {% if loop.index0 % 4 == 0 %}
+      <div class="row">
+    {% endif %}
+    <!-- Invocamos a mostrar_carta dentro de un div -->
+    <div class="col-3 my-3 fluid">
+        {{ mostrar_carta(id2jugador[carta_liga.id_jugador], id2carta[carta_liga.id_jugador]) }}
+        <h5> Numero de copias: {{ carta_liga.numero_copias }} </h5>
+    </div>
+    <!-- Tenemos que cerrar el elemento <div> -->
+    {% if loop.index0 % 4 == 3 %}
+      </div>
+    {% endif %}
+    {% endfor %}
+
+  <!-- Renderizamos el widged para la paginacion -->
+  <div class="row">
+    <div class="col-6">
+        {{ render_pagination(paginacion_carta_liga) }}
+    </div>
+  </div>
+</div>
+{% endblock %}

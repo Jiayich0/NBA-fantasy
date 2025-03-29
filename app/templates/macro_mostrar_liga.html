@@ -1,0 +1,97 @@
+<!-- Archivo que tiene dos macros para mostrar ligas: una en modo preview (mostrar_liga)
+y otra con la información de los usuarios (mostrar_liga_completa) -->
+
+{% from "bootstrap4/utils.html" import render_icon %}
+{% from "bootstrap5/pagination.html" import render_pagination %}
+
+
+<!-- Macro para mostrar la preview de una liga -->
+<!-- Recibe como parametro:
+    * El objeto liga a mostrar, "liga"
+    * Un diccionario "num_usuarios" con el numero de usuarios que se han
+      unido a cada liga (con clave el id de la liga).
+    * Un booleano que indica si el usuario actual esta registrado en esa liga o no.
+
+    Debe estar incluido  en un grid de Boostrap para que se renderice correctamente. -->
+{% macro mostrar_liga(liga, num_usuarios, participa_en_liga) %}
+    <div class="row align-items-center bg-light rounded p-3 mx-5">
+
+        <div class="col-6 my-4">
+            <h3>
+                {% if participa_en_liga %}
+                    <a href={{ url_for('mostrar_liga', id_liga=liga.id) }}> Liga {{ liga.nombre }} </a>
+                {% else %}
+                 Liga  {{ liga.nombre }}
+                {% endif %}
+            </h3>
+        </div>
+        {% if participa_en_liga %}
+            <div class="col-3 offset-3 text-center justify-content-center">
+                <button type="button" class="btn btn-danger">Ya Participas...</button>
+            </div>
+        
+        {% elif num_usuarios == liga.numero_participantes_maximo %}
+            <div class="col-3 offset-3 text-center justify-content-center">
+                <button type="button" class="btn btn-danger">Liga Completa</button>
+            </div>
+
+        {% elif current_user.is_authenticated %}
+            <div class="col-3 offset-3 text-center justify-content-center">
+                <a class="btn btn-primary" role="button" href= {{ url_for('unirse_liga', id_liga=liga.id) }}>
+                    Unirse a Liga </a>
+            </div>
+        {% endif %}
+
+    </div>
+    <div class="row align-items-center my-6 mx-5" style="background-color:#f1f1f1;">
+        <div class="col-3 text-center">
+            <h5> Id liga: {{ liga.id }} </h5>
+        </div>
+        <div class="col-6">
+            <h5 class="text-center"> Participantes: {{ num_usuarios }} / {{ liga.numero_participantes_maximo }}</h5>
+        </div>
+        <div class="col-3 my-4 text-center">
+            <!-- Ponemos texto cuando pasamos el raton por encima (hover) -->
+            {% if liga.password_hash %}
+                <span data-bs-toggle="tooltip" data-bs-placement="top" title="Liga Privada">
+                            {{ render_icon('lock') }}
+                </span>
+            {% else %}
+                <span data-bs-toggle="tooltip" data-bs-placement="top" title="Liga Abierta">
+                    {{ render_icon('unlock') }}
+                </span>
+
+            {% endif %}
+        </div>
+
+    </div>
+{% endmacro %}
+
+
+<!-- Macro que renderiza una liga completa. Recibe el objeto Liga y una pagina de
+    objetos Participaciones (que puede ser vacía) -->
+{% macro mostrar_liga_completa(liga, pagina_participaciones, num_participantes) %}
+
+    <div class="row align-items-center text-center">
+        <h3 class="mt-2"> Liga:  {{ liga.nombre }}</h3>
+        <h4 class="mt-3"> Nombre de la Liga: {{ liga.nombre }}</h4>
+        <!-- La funcion |length permite calcular la longitud de una lista -->
+        <h5 class="mt-4"> Número de Participantes Actuales: {{ num_participantes }} </h5>
+        <h5 class="mt-2"> Número Máximo de participantes: {{ liga.numero_participantes_maximo }} </h5>
+        <h3 class="mt-5"> Participantes Actuales: </h3>
+    </div>
+    <div class="row mt-5">
+        {% for participacion in pagina_participaciones %}
+            <div class="col-6 text-center mt-2">
+                <b>Usuario:</b> <a href={{ url_for('cartas_usuario_en_liga', id_usuario=participacion.id_usuario,
+                                        id_liga=participacion.id_liga) }}>{{ participacion.id_usuario }} </a>
+            </div>
+            <div class="col-4 text-center mt-1">
+                <b>Puntuación Acumulada: </b> {{ participacion.puntuacion_acumulada }}
+            </div>
+        {% endfor %}
+    </div>
+    <div class="row my-3 align-items-center">
+        {{ render_pagination(pagina_participaciones) }}
+    </div>
+{% endmacro %}

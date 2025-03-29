@@ -1,0 +1,27 @@
+<!-- Template que muestra un listado de ligas, indicando si el usuario actual esta conectado o no.
+    Este template espera 3 argumentos:
+    * Una pagina de ligas en la variable "ligas"
+    * Un diccionario "num_usuarios" que vincula el numero de usuarios dado el id de una liga
+    * Un diccionario "participa_liga" que almacena si el usuario actual pertenece
+      a una liga, dado el id de esa liga
+-->
+{% from "bootstrap5/pagination.html" import render_pagination %}
+{% from "macro_mostrar_liga.html" import mostrar_liga with context %}
+
+{% extends "base_with_navbar.html" %}
+
+{% block title %}
+Ligas - Pagina {{ ligas.page }}
+{% endblock %}
+
+{% block content %}
+    <h1 class="text-center mb-4"> Lista de Ligas </h1>
+    <div class="mt-4 mb-4 container-fluid ">
+        {% for liga in ligas %}
+            {{ mostrar_liga(liga, num_usuarios[liga.id], participa_liga[liga.id]) }}
+        {% endfor %}
+    </div>
+
+    {{ render_pagination(ligas) }}
+
+{% endblock %}

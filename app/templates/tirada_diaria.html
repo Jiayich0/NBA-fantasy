@@ -1,0 +1,41 @@
+<!-- Template para mostrar las cartas que se han obtenido
+    en el sorteo diario. Recibe una lista "lista_liga_carta" de tuplas de objetos (Liga, Carta),
+    con la carta aleatoria obtenida para cada liga.
+    El usuario debe estar logeado para que se renderice correctamente  -->
+
+{% extends "base_with_navbar.html" %}
+
+{% from "macro_mostrar_carta.html" import mostrar_carta %}
+
+{% block title %}
+Tirada Diaria
+{% endblock %}
+
+
+{% block content %}
+    <h1 class="text-center mb-4"> ¡Has abierto las siguientes cartas! </h1>
+
+    <div class="mt-4 mb-4 container-fluid">
+    {% for tupla_liga_carta in lista_liga_carta %}
+      <!-- La lista contiene en la primera posicion de cada tupla una liga,
+      y en la segunda posicion la carta correspondiente -->
+      <h3 class="mb-5 text-center">
+        Carta obtenida en la Liga {{ tupla_liga_carta[0].nombre }}
+        (id: {{ tupla_liga_carta[0].id }})
+      </h3>
+
+      <div class="row my-3">
+        <div class="col-6 offset-3 justify-content-center text-center">
+        {{ mostrar_carta(tupla_liga_carta[1].jugador, tupla_liga_carta[1]) }}
+        </div>
+      </div>
+      {% endfor %}
+        <div class="col-4 offset-4 text-center justify-content-center">
+            <a class="btn btn-primary" role="button" href= {{ url_for('perfil_usuario', id_usuario=current_user.id) }}>
+                Volver a mi Perfil </a>
+        </div>
+    </div>
+
+
+
+{% endblock %}

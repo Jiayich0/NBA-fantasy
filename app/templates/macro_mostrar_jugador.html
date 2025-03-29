@@ -1,0 +1,21 @@
+<!-- Macro para mostrar un jugador. Debe utilizarse dentro de un contenedor.
+     Recibe como argumento un objeto Jugador. -->
+{% macro mostrar_jugador(jugador) %}
+    <img src={{ jugador.url_imagen }} class="img-fluid" >
+    <h4 class="text-center mt-3 text-wrap text-break">
+        <a href={{ url_for('perfil_jugador', id_jugador=jugador.id_jugador) }}> {{ jugador.nombre }}
+        </a>
+    </h4>
+    <h5 class="d-flex justify-content-center text-wrap">
+        <b>Equipo: </b>
+    </h5>
+    <p class="d-flex justify-content-center text-wrap">
+        {% if jugador.nombre_equipo %}
+            {{ jugador.nombre_equipo }}
+        {% else %}
+            Sin equipo
+        {% endif %}
+
+    </p>
+
+{% endmacro %}

@@ -1,0 +1,18 @@
+<!-- Macro para mostrar una carta. Debe utilizarse dentro de un contenedor.
+     Recibe un objeto jugador y su carta asociada. -->
+{% from "macro_mostrar_jugador.html" import mostrar_jugador %}
+
+{% macro mostrar_carta(jugador, carta) %}
+    <!-- Muestro primero el objeto jugador-->
+    {{ mostrar_jugador(jugador) }}
+    <div class="row mt-2">
+        <p>
+            <b> Puntuacion: </b> {{ carta.puntuacion }}
+        </p>
+    </div>
+    <div class="row">
+        <p>
+            <b>Rareza:</b> {{ carta.rareza }}
+        </p>
+    </div>
+{% endmacro %}

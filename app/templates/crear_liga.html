@@ -1,0 +1,19 @@
+<!-- Template para crear una liga. Necesita como parametro "form",
+  que es el formulario de creacion de una liga -->
+{% extends "base_with_navbar.html" %}
+{% from "bootstrap5/form.html" import render_form %}
+
+
+{% block title %}
+Crear Liga
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+  <div class="row justify-content-center">
+    <div class="col-6">
+    {{ render_form(form) }}
+    </div>
+  </div>
+</div>
+{% endblock %}

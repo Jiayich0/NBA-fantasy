@@ -1,0 +1,53 @@
+<!-- Declaracion de una macro para mostrar el historico de partidos.
+Recibe la lista de tuplas (Historico, Partido) "combined_information", y el nombre del equipo
+ asociado al jugador del que estamos mostrando el historico. -->
+
+{% from "bootstrap5/table.html" import render_table %}
+{% from "bootstrap5/table.html" import render_table %}
+
+{% macro mostrar_historico(combined_information, nombre_equipo) %}
+<table class="table table-responsive table-striped table-hover table-bordered">
+  <thead class="thead-dark text-center align-middle">
+    <tr>
+      <th scope="col">#</th>
+      <th scope="col">Fecha</th>
+      <th scope="col">Equipo Local</th>
+      <th scope="col">Equipo Visitante</th>
+        <th scope="col">Resultado</th>
+      <th scope="col">Tiempo Jugado</th>
+      <th scope="col">Puntos Marcados</th>
+      <th scope="col">Puntuación</th>
+
+      <th scope="col">URL</th>
+    </tr>
+  </thead>
+  <tbody class="text-center align-middle">
+  <!-- En la posicion 0 tenemos el historico, en la 1 el partido -->
+    {% for pair in combined_information %}
+    <tr>
+      <th scope="row"> {{ loop.index0 + 1 }}</th>
+      <td> {{ pair[1].fecha }}</td>
+      <td> {{ pair[1].equipo_local }}</td>
+      <td> {{ pair[1].equipo_visitante }}</td>
+        <td>
+            {% if (nombre_equipo == pair[1].equipo_local
+                    and pair[1].gana_local) or (nombre_equipo == pair[1].equipo_visitante
+                    and not pair[1].gana_local)  %}
+            ¡Victoria!
+            {% else %}
+            Derrota...
+            {% endif %}
+
+        </td>
+      <td> {{ pair[0].tiempo_jugado }}</td>
+      <td> {{ pair[0].puntos_marcados }}</td>
+        <td> {{ pair[0].puntuacion }}</td>
+
+        <td> <a href="{{ pair[1].url }}"> {{ pair[1].url }} </a></td>
+
+    </tr>
+    {% endfor %}
+  </tbody>
+</table>
+
+{% endmacro %}

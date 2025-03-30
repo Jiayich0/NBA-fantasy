@@ -7,11 +7,11 @@ from flask import current_app as app, render_template, redirect, url_for, flash,
 from flask_login import login_user, logout_user, login_required, current_user
 from flask_login import login_required
 from sqlalchemy import select
-from sqlalchemy.orm import load_only
+from sqlalchemy.orm import load_only, selectinload, joinedload
 from sqlalchemy.exc import IntegrityError
 from typing import List
-from .formularios import SignupForm, SignInForm         #######
-from .modelos import Usuario, Jugador, Liga             #######
+from .formularios import SignupForm, SignInForm
+from .modelos import Usuario, Jugador, Liga, Historico, Partido
 from . import db, login_manager
 login_manager.login_view = 'sign_in'
 
@@ -137,8 +137,21 @@ def perfil_jugador(id_jugador: int):
     # Muestra el perfil de un jugador de baloncesto.
     # Devuelve un error 404 si el id no está asociado a ningún jugador.
     # Como respuesta, renderiza el template "perfil_jugador.html".
-    jugador = db.first_or_404(select(Jugador).where(Jugador.id_jugador == id_jugador))
-    return render_template("perfil_jugador.html", jugador=jugador)
+    jugador = db.first_or_404(
+        select(Jugador)
+        .where(Jugador.id_jugador == id_jugador)
+        .options(selectinload(Jugador.historicos).selectinload(Historico.partido))
+    )
+
+    lista_historico_partido = db.session.execute(
+        select(Historico, Partido)  # macro_mostrar_historico espera una tupla
+        .join(Partido, Historico.id_partido == Partido.id_partido)
+        # JOIN partido ON historico.id_partido = partido.id_partido; SELECT ... FROM ... JOIN
+        .where(Historico.id_jugador == id_jugador)
+        .order_by(Partido.fecha.desc())
+    ).all()
+
+    return render_template("perfil_jugador.html", jugador=jugador, lista_historico_partido=lista_historico_partido)
 
 
 @app.route('/ligas')

@@ -146,6 +146,9 @@ def mostrar_ligas():
     # Muestra la lista de ligas del sistema.
     # Como puede haber numerosas ligas, se utiliza la paginación de las mismas.
     # Devuelve como respuesta el template "mostrar_ligas.html".
+    page = request.args.get('page', 1, type=int)
+    ligas = Liga.query.paginate(page=page, per_page=10)
+    return render_template("mostrar_ligas.html", ligas=ligas)
 
 
 @app.route('/liga/<int:id_liga>')

@@ -2,6 +2,7 @@
 Módulo de Python que contiene las rutas
 """
 import functools
+from tkinter.tix import Select
 
 from flask import current_app as app, render_template, redirect, url_for, flash, abort, request
 from flask_login import login_user, logout_user, login_required, current_user
@@ -110,6 +111,7 @@ def perfil_usuario(id_usuario: int):
     # debereis implementar vosotros. Para simplificar este template, se os adjunta la funcion
     # "mostrar_liga" en el archivo "macro_mostrar_liga", el cual se debe invocar con cada una de las
     # ligas asociadas al usuario (y otra informacion pertinente).
+
     # FIXME: macroMostrarLiga y loginrequired para que solo acceda usaurio a su pperfil pero para trabajar y probar
     # no descomentar las dos siguientes líneas
 
@@ -161,7 +163,11 @@ def mostrar_ligas():
     # Devuelve como respuesta el template "mostrar_ligas.html".
     ligas = db.paginate(select(Liga), per_page=8)
 
-    # A TENER EN CUENTA .session.execute saca list tuplas y .session.scalars saca list enteros
+    # TODO - scalar, scalars, execute
+    #  A TENER EN CUENTA:
+    #  .session.scalars -> 1 fila, 1 columna: saca un escalar, no necesita .all()
+    #  .session.scalars -> n filas, 1 columna: saca varios escalares, necesita .all()
+    #  .session.execute -> n filas, n columnas: saca varios resultados (ej. tuplas), necesita .all()
     # Crear lista tuplas para luego convertir en diccionario {clave:valor(int)}
     numPerId = db.session.execute(
         select(ParticipaLiga.id_liga, func.count())
@@ -169,7 +175,7 @@ def mostrar_ligas():
     ).all()
     num_usuarios = {id_liga: cont for id_liga, cont in numPerId}    # Un diccionario "num_usuarios" que... (en el template)
 
-    # Crear lista tuplas {clave:valor(bool)}
+    # Crear lista tuplas con valor vacio y se asigna en el for {clave:valor(bool)}
         # perteneceLiga: lista de todos los idLiga donde si está (boolean = TRUE)
         # participa_liga: dict con todos los idLiga, si idLiga esta en perteneceLiga entonces valor:true; else valor:false
     perteneceLiga = db.session.scalars(
@@ -197,7 +203,34 @@ def mostrar_liga(id_liga: int):
     # Muestra la liga asociada al id "id_liga".
     # Devuelve un error 404 si la liga no existe.
     # Devuelve como respuesta el template "mostrar_liga_participante.html"
-    abort(501)
+    liga = db.first_or_404(select(Liga).where(Liga.id == id_liga))
+
+    # TODO - selectinload()
+    #  A TENER EN CUENTA:
+    #  Cuando haces la consulta de ParticipaLiga cada una tiene una relación con Usuario. Si luego accedes a
+    #  participacion.usuario.email (o cualquier atributo) -> se hará una consulta extra por cada usuario (lazy loading))
+    #  selectinload(...) evita lazy loading, hace una consulta adicional para cargar todos los
+    #  usuarios de golpe -> se llama: eager loadin
+    #  Resumen: optimiza y evita problema de N+1. Ej. Usar si es equipo.jugador.id, no usar si es equipo.id
+    pagina_participaciones = db.paginate(
+        select(ParticipaLiga)
+        .where(ParticipaLiga.id_liga == id_liga)
+        .options(selectinload(ParticipaLiga.usuario)),
+        per_page=5
+    )
+
+    num_participantes = db.session.scalar(
+        select(func.count())
+        .select_from(ParticipaLiga)
+        .where(ParticipaLiga.id_liga == id_liga)
+    )
+
+    return render_template(
+        "mostrar_liga_participante.html",
+        liga=liga,
+        pagina_participaciones=pagina_participaciones,
+        num_participantes=num_participantes
+    )
 
 
 @app.route('/perfil/<int:id_usuario>/liga/<int:id_liga>/cartas')

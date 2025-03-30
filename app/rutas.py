@@ -11,7 +11,7 @@ from sqlalchemy.orm import load_only
 from sqlalchemy.exc import IntegrityError
 from typing import List
 from .formularios import SignupForm, SignInForm         #######
-from .modelos import Usuario, Jugador                   #######
+from .modelos import Usuario, Jugador, Liga             #######
 from . import db, login_manager
 login_manager.login_view = 'sign_in'
 
@@ -137,7 +137,8 @@ def perfil_jugador(id_jugador: int):
     # Muestra el perfil de un jugador de baloncesto.
     # Devuelve un error 404 si el id no está asociado a ningún jugador.
     # Como respuesta, renderiza el template "perfil_jugador.html".
-    abort(501)
+    jugador = db.first_or_404(select(Jugador).where(Jugador.id_jugador == id_jugador))
+    return render_template("perfil_jugador.html", jugador=jugador)
 
 
 @app.route('/ligas')
@@ -145,7 +146,6 @@ def mostrar_ligas():
     # Muestra la lista de ligas del sistema.
     # Como puede haber numerosas ligas, se utiliza la paginación de las mismas.
     # Devuelve como respuesta el template "mostrar_ligas.html".
-    abort(501)
 
 
 @app.route('/liga/<int:id_liga>')

@@ -6,12 +6,12 @@ import functools
 from flask import current_app as app, render_template, redirect, url_for, flash, abort, request
 from flask_login import login_user, logout_user, login_required, current_user
 from flask_login import login_required
-from sqlalchemy import select
+from sqlalchemy import select, func
 from sqlalchemy.orm import load_only, selectinload, joinedload
 from sqlalchemy.exc import IntegrityError
 from typing import List
 from .formularios import SignupForm, SignInForm
-from .modelos import Usuario, Jugador, Liga, Historico, Partido
+from .modelos import Usuario, Jugador, Liga, Historico, Partido, ParticipaLiga
 from . import db, login_manager
 login_manager.login_view = 'sign_in'
 
@@ -146,7 +146,7 @@ def perfil_jugador(id_jugador: int):
     lista_historico_partido = db.session.execute(
         select(Historico, Partido)  # macro_mostrar_historico espera una tupla
         .join(Partido, Historico.id_partido == Partido.id_partido)
-        # JOIN partido ON historico.id_partido = partido.id_partido; SELECT ... FROM ... JOIN
+        # SQL: JOIN partido ON historico.id_partido = partido.id_partido; SELECT ... FROM ... JOIN
         .where(Historico.id_jugador == id_jugador)
         .order_by(Partido.fecha.desc())
     ).all()
@@ -159,9 +159,37 @@ def mostrar_ligas():
     # Muestra la lista de ligas del sistema.
     # Como puede haber numerosas ligas, se utiliza la paginación de las mismas.
     # Devuelve como respuesta el template "mostrar_ligas.html".
-    page = request.args.get('page', 1, type=int)
-    ligas = Liga.query.paginate(page=page, per_page=10)
-    return render_template("mostrar_ligas.html", ligas=ligas)
+    ligas = db.paginate(select(Liga), per_page=8)
+
+    # A TENER EN CUENTA .session.execute saca list tuplas y .session.scalars saca list enteros
+    # Crear lista tuplas para luego convertir en diccionario {clave:valor(int)}
+    numPerId = db.session.execute(
+        select(ParticipaLiga.id_liga, func.count())
+        .group_by(ParticipaLiga.id_liga)
+    ).all()
+    num_usuarios = {id_liga: cont for id_liga, cont in numPerId}    # Un diccionario "num_usuarios" que... (en el template)
+
+    # Crear lista tuplas {clave:valor(bool)}
+        # perteneceLiga: lista de todos los idLiga donde si está (boolean = TRUE)
+        # participa_liga: dict con todos los idLiga, si idLiga esta en perteneceLiga entonces valor:true; else valor:false
+    perteneceLiga = db.session.scalars(
+        select(ParticipaLiga.id_liga)
+        .where(ParticipaLiga.id_usuario == current_user.id)
+    ).all()
+    participa_liga = {}                                             # Un diccionario "participa_liga" que...
+    for liga in ligas.items:
+        if liga.id in perteneceLiga:
+            participa_liga[liga.id] = True
+        else:
+            participa_liga[liga.id] = False
+
+    # el html espera 3 argumentos
+    return render_template(
+        "mostrar_ligas.html",
+        ligas=ligas,
+        num_usuarios=num_usuarios,
+        participa_liga=participa_liga
+    )
 
 
 @app.route('/liga/<int:id_liga>')

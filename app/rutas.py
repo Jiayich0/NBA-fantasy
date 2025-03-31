@@ -6,7 +6,7 @@ import random
 from flask import current_app as app, render_template, redirect, url_for, flash, abort
 from flask_login import login_user, logout_user, login_required, current_user
 from sqlalchemy import select, func, exists
-from sqlalchemy.orm import selectinload
+from sqlalchemy.orm import selectinload, load_only
 from sqlalchemy.exc import IntegrityError
 from datetime import datetime
 from .formularios import SignupForm, SignInForm, UnirseLigaForm, CrearLigaForm
@@ -182,7 +182,10 @@ def mostrar_ligas():
     # Muestra la lista de ligas del sistema.
     # Como puede haber numerosas ligas, se utiliza la paginación de las mismas.
     # Devuelve como respuesta el template "mostrar_ligas.html".
-    ligas = db.paginate(select(Liga), per_page=8)
+    ligas = db.paginate(
+        select(Liga).options(load_only(Liga.id, Liga.nombre, Liga.numero_participantes_maximo)),
+        per_page=8
+    )
 
     # TODO - scalar, scalars, execute
     #  A TENER EN CUENTA:

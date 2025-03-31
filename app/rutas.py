@@ -97,6 +97,13 @@ def sign_in():
         else:
             login_user(usuario)
             return redirect(url_for("tirada_diaria"))
+            # Esto es una mejora pra cuando: intentas acceder a una url -> te pide logearte ->
+            # -> te logeas -> te devuelve a donde querias ir
+            # FIXME signin
+            next_page = request.args.get("next")
+            if next_page:
+                return redirect(next_page)
+            return redirect(url_for("tirada_diaria"))
 
     return render_template("sign_in.html", form=form)
 
@@ -156,6 +163,7 @@ def perfil_jugador(id_jugador: int):
 
 
 @app.route('/ligas')
+@login_required
 def mostrar_ligas():
     # Muestra la lista de ligas del sistema.
     # Como puede haber numerosas ligas, se utiliza la paginación de las mismas.
@@ -308,6 +316,7 @@ def unirse_liga(id_liga: int):
 
 
 @app.route('/crear_liga', methods=["GET", "POST"])
+@login_required
 def crear_liga():
     # Creacion de una liga.
     # Solo los usuarios registrados pueden acceder a la creacion de ligas. Además, si un usuario ya

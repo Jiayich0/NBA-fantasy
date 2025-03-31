@@ -51,6 +51,9 @@ def sign_up():
             db.session.commit()
             login_user(usuario)  # Autenticar al usuario después del registro
             return redirect(url_for('perfil_usuario', id_usuario=usuario.id))
+        except IntegrityError:
+            db.session.rollback()
+            flash("Ya existe un usuario con este email.")
 
         # Capturo la excepcion IntegrityError. Esta excepción se lanza con errores en la integridad
         # de los datos. Por ejemplo, al violar que el email es único

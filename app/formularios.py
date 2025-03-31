@@ -36,6 +36,14 @@ class SignupForm(FlaskForm):
 
     submit = SubmitField('Registrarse')
 
+    # Se ejecuta en el form.validate_on_submit()
+    def validate_cumple(self, field):
+        hoy = datetime.date.today()
+        edad = hoy.year - field.data.year - ((hoy.month, hoy.day) < (field.data.month, field.data.day))
+        if edad < 14:
+            raise ValidationError("Debes tener al menos 14 años para registrarte.")
+
+
 class SignInForm(FlaskForm):
     """Formulario para hacer login"""
     email = StringField(

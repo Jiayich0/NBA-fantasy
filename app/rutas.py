@@ -1,17 +1,18 @@
 """
 Módulo de Python que contiene las rutas
 """
+import datetime
 import functools
 from tkinter.tix import Select
 
 from flask import current_app as app, render_template, redirect, url_for, flash, abort, request
 from flask_login import login_user, logout_user, login_required, current_user
-from flask_login import login_required
 from sqlalchemy import select, func, exists
-from sqlalchemy.orm import load_only, selectinload, joinedload
+from sqlalchemy.orm import selectinload
 from sqlalchemy.exc import IntegrityError
-from .formularios import SignupForm, SignInForm, UnirseLigaForm
-from .modelos import Usuario, Jugador, Liga, Historico, Partido, ParticipaLiga
+from datetime import datetime
+from .formularios import SignupForm, SignInForm, UnirseLigaForm, CrearLigaForm
+from .modelos import Usuario, Jugador, Liga, Historico, Partido, ParticipaLiga, Carta, CartaLiga
 from . import db, login_manager
 login_manager.login_view = 'sign_in'
 
@@ -97,13 +98,6 @@ def sign_in():
         else:
             login_user(usuario)
             return redirect(url_for("tirada_diaria"))
-            # Esto es una mejora pra cuando: intentas acceder a una url -> te pide logearte ->
-            # -> te logeas -> te devuelve a donde querias ir
-            # FIXME signin
-            next_page = request.args.get("next")
-            if next_page:
-                return redirect(next_page)
-            return redirect(url_for("tirada_diaria"))
 
     return render_template("sign_in.html", form=form)
 
@@ -176,22 +170,22 @@ def mostrar_ligas():
     #  .session.scalars -> n filas, 1 columna: saca varios escalares, necesita .all()
     #  .session.execute -> n filas, n columnas: saca varios resultados (ej. tuplas), necesita .all()
     # Crear lista tuplas para luego convertir en diccionario {clave:valor(int)}
-    numPerId = db.session.execute(
+    num_per_id = db.session.execute(
         select(ParticipaLiga.id_liga, func.count())
         .group_by(ParticipaLiga.id_liga)
     ).all()
-    num_usuarios = {id_liga: cont for id_liga, cont in numPerId}    # Un diccionario "num_usuarios" que... (en el template)
+    num_usuarios = {id_liga: cont for id_liga, cont in num_per_id}    # Un diccionario "num_usuarios" que... (en el template)
 
     # Crear lista tuplas con valor vacio y se asigna en el for {clave:valor(bool)}
         # perteneceLiga: lista de todos los idLiga donde si está (boolean = TRUE)
         # participa_liga: dict con todos los idLiga, si idLiga esta en perteneceLiga entonces valor:true; else valor:false
-    perteneceLiga = db.session.scalars(
+    pertenece_liga = db.session.scalars(
         select(ParticipaLiga.id_liga)
         .where(ParticipaLiga.id_usuario == current_user.id)
     ).all()
     participa_liga = {}                                             # Un diccionario "participa_liga" que...
     for liga in ligas.items:
-        if liga.id in perteneceLiga:
+        if liga.id in pertenece_liga:
             participa_liga[liga.id] = True
         else:
             participa_liga[liga.id] = False
@@ -301,9 +295,7 @@ def unirse_liga(id_liga: int):
 
     else:
         form = UnirseLigaForm()
-        if not form.validate_on_submit():
-            return render_template("unirse_liga.html", liga=liga, form=form)
-        else:
+        if form.validate_on_submit():
             if not liga.check_password(form.password.data):
                 flash("Contraseña incorrecta.")
                 return render_template("unirse_liga.html", liga=liga, form=form)
@@ -313,6 +305,8 @@ def unirse_liga(id_liga: int):
             flash("Te has unido correctamente a la liga.")
             # TODO carta aletoria
             return redirect(url_for("mostrar_liga", id_liga=liga.id))
+
+        return render_template("unirse_liga.html", liga=liga, form=form)
 
 
 @app.route('/crear_liga', methods=["GET", "POST"])
@@ -328,7 +322,30 @@ def crear_liga():
     # mientras que la contraseña es opcional. Se creara una liga
     # con estos datos, se registrara al creador en esa liga y se le redirigirá posteriormente a su perfil, con
     # un mensaje flash indicando que la liga se ha creado correctamente: "Se ha creado la liga correctamente".)
-    abort(501)
+    num_pertenece = db.session.scalar(
+        select(func.count())
+        .select_from(ParticipaLiga)
+        .where(ParticipaLiga.id_usuario == current_user.id)
+    )
+    if(num_pertenece >= 10):
+        flash("Has excedido el numero máximo de ligas.")
+        return redirect(url_for("perfil_usuario", id_usuario=current_user.id))
+
+    form = CrearLigaForm()
+    if form.validate_on_submit():
+        liga = Liga(
+            nombre=form.nombre.data,
+            numero_participantes_maximo=form.numero_participantes_maximo.data
+        )
+        liga.password = form.password.data
+        db.session.add(liga)
+        db.session.commit()     # No quitar, si se quita al crear ParticipaLiga el id_liga es nulo
+        db.session.add(ParticipaLiga(id_usuario=current_user.id, id_liga=liga.id))
+        db.session.commit()
+        flash("Se ha creado la liga correctamente.")
+        return redirect(url_for("mostrar_liga", id_liga=liga.id))
+
+    return render_template("crear_liga.html", form=form)
 
 
 @app.route("/desconexion")
@@ -346,8 +363,8 @@ def desconectarse():
     return redirect(url_for('sign_in'))
 
 
-
 @app.route("/tirada_diaria")
+@login_required
 def tirada_diaria():
     # Tirada diaria de cartas.
     # Hay que comprobar que el usuario estaba previamente loggeado.
@@ -358,4 +375,24 @@ def tirada_diaria():
     # función de la rareza de las cartas y se le añade a las cartas del usuario. Si el usuario ya tenía esa carta,
     # se le suma uno al número de copias. Si es el cumpleaños del usuario, hay que generar una carta de cada categoría.
     # Devuelve como respuesta el template "tirada_diaria.html".
-    abort(501)
+    if current_user.ultima_tirada is not None:
+        if current_user.ultima_tirada.date() == datetime.now().date():
+            flash("Ya has obtenido cartas hoy, vuelve mañana.")
+            return redirect(url_for("perfil_usuario", id_usuario=current_user.id))
+
+    ligas_participadas = db.session.scalars(
+        select(ParticipaLiga.id_liga)
+        .where(ParticipaLiga.id_usuario == current_user.id)
+    ).all()
+
+    lista_liga_carta = []
+    for id_liga in ligas_participadas:
+        liga = db.session.get(Liga, id_liga)
+        carta = asignar_carta_aleatoria(current_user.id, id_liga)
+        lista_liga_carta.append((liga, carta))
+
+    current_user.ultima_tirada = datetime.now()
+    db.session.commit()
+
+    return render_template("tirada_diaria.html", lista_liga_carta=lista_liga_carta)
+

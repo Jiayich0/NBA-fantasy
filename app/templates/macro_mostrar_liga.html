@@ -86,7 +86,8 @@ y otra con la información de los usuarios (mostrar_liga_completa) -->
         {% for participacion in pagina_participaciones %}
             <div class="col-6 text-center mt-2">
                 <b>Usuario:</b> <a href={{ url_for('cartas_usuario_en_liga', id_usuario=participacion.id_usuario,
-                                        id_liga=participacion.id_liga) }}>{{ participacion.id_usuario }} </a>
+                                        id_liga=participacion.id_liga) }}>{{ participacion.usuario.email }} </a>
+                <!-- cambiar participacion.id_usuario por participacion.usuario.email para mostrar email -->
             </div>
             <div class="col-4 text-center mt-1">
                 <b>Puntuación Acumulada: </b> {{ participacion.puntuacion_acumulada }}

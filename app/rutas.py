@@ -2,9 +2,9 @@
 Módulo de Python que contiene las rutas
 """
 import datetime
+import random
 import functools
 from tkinter.tix import Select
-
 from flask import current_app as app, render_template, redirect, url_for, flash, abort, request
 from flask_login import login_user, logout_user, login_required, current_user
 from sqlalchemy import select, func, exists
@@ -216,6 +216,7 @@ def mostrar_liga(id_liga: int):
     pagina_participaciones = db.paginate(
         select(ParticipaLiga)
         .where(ParticipaLiga.id_liga == id_liga)
+        .order_by(ParticipaLiga.puntuacion_acumulada.desc())
         .options(selectinload(ParticipaLiga.usuario)),
         per_page=5
     )
@@ -287,10 +288,7 @@ def unirse_liga(id_liga: int):
         return redirect(url_for("mostrar_ligas"))
 
     if liga.password_hash is None:
-        db.session.add(ParticipaLiga(id_usuario=current_user.id, id_liga=id_liga))
-        db.session.commit()
-        flash("Te has unido correctamente a la liga.")
-        # TODO carta aleatoria
+        unirse(current_user.id, id_liga)
         return redirect(url_for("mostrar_liga", id_liga=liga.id))
 
     else:
@@ -300,13 +298,21 @@ def unirse_liga(id_liga: int):
                 flash("Contraseña incorrecta.")
                 return render_template("unirse_liga.html", liga=liga, form=form)
 
-            db.session.add(ParticipaLiga(id_usuario=current_user.id, id_liga=id_liga))
-            db.session.commit()
-            flash("Te has unido correctamente a la liga.")
-            # TODO carta aletoria
+            unirse(current_user.id, id_liga)
             return redirect(url_for("mostrar_liga", id_liga=liga.id))
 
         return render_template("unirse_liga.html", liga=liga, form=form)
+
+# Para evitar duplicidad de código en unirse_liga (privada y pública)
+def unirse(id_usuario: int, id_liga: int):
+    """
+    Añade al usuario a la liga y le asigna una carta de bienvenida.
+    """
+    db.session.add(ParticipaLiga(id_usuario=id_usuario, id_liga=id_liga))
+    db.session.commit()
+    # Es la carta de bienvenida
+    asignar_carta_aleatoria(id_usuario, id_liga)
+    flash("Te has unido correctamente a la liga.")
 
 
 @app.route('/crear_liga', methods=["GET", "POST"])
@@ -375,24 +381,87 @@ def tirada_diaria():
     # función de la rareza de las cartas y se le añade a las cartas del usuario. Si el usuario ya tenía esa carta,
     # se le suma uno al número de copias. Si es el cumpleaños del usuario, hay que generar una carta de cada categoría.
     # Devuelve como respuesta el template "tirada_diaria.html".
-    if current_user.ultima_tirada is not None:
-        if current_user.ultima_tirada.date() == datetime.now().date():
-            flash("Ya has obtenido cartas hoy, vuelve mañana.")
-            return redirect(url_for("perfil_usuario", id_usuario=current_user.id))
-
     ligas_participadas = db.session.scalars(
-        select(ParticipaLiga.id_liga)
+        select(ParticipaLiga)
         .where(ParticipaLiga.id_usuario == current_user.id)
     ).all()
 
-    lista_liga_carta = []
-    for id_liga in ligas_participadas:
-        liga = db.session.get(Liga, id_liga)
-        carta = asignar_carta_aleatoria(current_user.id, id_liga)
-        lista_liga_carta.append((liga, carta))
+    hoy = datetime.now().date()
+    es_cumple = (
+            current_user.fecha_nacimiento.month == hoy.month and
+            current_user.fecha_nacimiento.day == hoy.day
+    )
 
-    current_user.ultima_tirada = datetime.now()
+    lista_liga_carta = []
+    for participacion in ligas_participadas:
+        if (participacion.fecha_ultima_tirada is not None and
+                participacion.fecha_ultima_tirada.date() == hoy
+        ):
+            continue
+
+        liga = db.session.get(Liga, participacion.id_liga)
+        if es_cumple:
+            rarezas = ["comun", "infrecuente", "rara", "mitica"]
+            for rareza in rarezas:
+                carta = asignar_carta_aleatoria(current_user.id, participacion.id_liga, rareza=rareza)
+                lista_liga_carta.append((liga, carta))
+        else:
+            carta = asignar_carta_aleatoria(current_user.id, participacion.id_liga)
+            lista_liga_carta.append((liga, carta))
+
+        participacion.fecha_ultima_tirada = datetime.now()
+
+    if not lista_liga_carta:
+        flash("Ya has obtenido cartas hoy, vuelve mañana.")
+        return redirect(url_for("perfil_usuario", id_usuario=current_user.id))
+
     db.session.commit()
 
     return render_template("tirada_diaria.html", lista_liga_carta=lista_liga_carta)
 
+
+def asignar_carta_aleatoria(id_usuario: int, id_liga: int, rareza: str = None):
+    """
+    Asigna una carta aleatoria.
+    - Si se pasa una rareza como param, se elige una carta de esa rareza (para cumpleaños)
+    - Si ya tenía la carta en esa liga, se le suma una copia
+    """
+    if rareza is None:
+        r = random.random()
+        if r < 0.5:
+            rareza = "comun"
+        elif r < 0.8:
+            rareza = "infrecuente"
+        elif r < 0.95:
+            rareza = "rara"
+        else:
+            rareza = "mitica"
+
+    # Dada la rareza pilla todas las cartas de esa rareza
+    cartas_disponibles = db.session.scalars(
+        select(Carta)
+        .where(Carta.rareza == rareza)
+    ).all()
+
+    carta = random.choice(cartas_disponibles)
+    # Comprueba si la carta está o no en la liga del usuario
+    carta_liga = db.session.scalar(
+        select(CartaLiga)
+        .where(CartaLiga.id_usuario == id_usuario,
+               CartaLiga.id_liga == id_liga,
+               CartaLiga.id_carta == carta.id)
+    )
+
+    if carta_liga:
+        carta_liga.copias += 1
+    else:
+        nueva = CartaLiga(
+            id_usuario=id_usuario,
+            id_liga=id_liga,
+            id_carta=carta.id,
+            copias=1,
+            puntuacion=carta.puntuacion
+        )
+        db.session.add(nueva)
+
+    return carta

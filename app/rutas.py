@@ -3,9 +3,7 @@ Módulo de Python que contiene las rutas
 """
 import datetime
 import random
-import functools
-from tkinter.tix import Select
-from flask import current_app as app, render_template, redirect, url_for, flash, abort, request
+from flask import current_app as app, render_template, redirect, url_for, flash, abort
 from flask_login import login_user, logout_user, login_required, current_user
 from sqlalchemy import select, func, exists
 from sqlalchemy.orm import selectinload
@@ -113,13 +111,33 @@ def perfil_usuario(id_usuario: int):
     # ligas asociadas al usuario (y otra informacion pertinente).
 
     # FIXME: macroMostrarLiga y loginrequired para que solo acceda usaurio a su pperfil pero para trabajar y probar
-    # no descomentar las dos siguientes líneas
-
-    #if current_user.id != id_usuario:
-        #abort(403)
+    #  no descomentar las dos siguientes líneas
+    if current_user.id != id_usuario:
+        abort(403)
 
     usuario = db.first_or_404(select(Usuario).where(Usuario.id == id_usuario))
-    return render_template("perfil_usuario.html", usuario=usuario)
+
+    ligas = db.session.scalars(
+        select(Liga)
+        .join(ParticipaLiga)
+        .where(ParticipaLiga.id_usuario == id_usuario)
+    ).all()
+
+    num_usuarios = {}
+    for liga in ligas:
+        count = db.session.scalar(
+            select(func.count())
+            .select_from(ParticipaLiga)
+            .where(ParticipaLiga.id_liga == liga.id)
+        )
+        num_usuarios[liga.id] = count
+
+    return render_template(
+        "perfil_usuario.html",
+        usuario=usuario,
+        ligas=ligas,
+        num_usuarios=num_usuarios
+    )
 
 
 @app.route('/jugadores')
@@ -157,7 +175,6 @@ def perfil_jugador(id_jugador: int):
 
 
 @app.route('/ligas')
-@login_required
 def mostrar_ligas():
     # Muestra la lista de ligas del sistema.
     # Como puede haber numerosas ligas, se utiliza la paginación de las mismas.
@@ -179,10 +196,14 @@ def mostrar_ligas():
     # Crear lista tuplas con valor vacio y se asigna en el for {clave:valor(bool)}
         # perteneceLiga: lista de todos los idLiga donde si está (boolean = TRUE)
         # participa_liga: dict con todos los idLiga, si idLiga esta en perteneceLiga entonces valor:true; else valor:false
-    pertenece_liga = db.session.scalars(
-        select(ParticipaLiga.id_liga)
-        .where(ParticipaLiga.id_usuario == current_user.id)
-    ).all()
+    if current_user.is_authenticated:
+        pertenece_liga = db.session.scalars(
+            select(ParticipaLiga.id_liga)
+            .where(ParticipaLiga.id_usuario == current_user.id)
+        ).all()
+    else:
+        pertenece_liga = []
+
     participa_liga = {}                                             # Un diccionario "participa_liga" que...
     for liga in ligas.items:
         if liga.id in pertenece_liga:
@@ -413,7 +434,7 @@ def tirada_diaria():
     hoy = datetime.now().date()
 
     if (current_user.ultima_tirada is not None and
-            current_user.ultima_tirada.date() == hoy
+            current_user.ultima_tirada == hoy
     ):
         flash("Ya has obtenido cartas hoy, vuelve mañana.")
         return redirect(url_for("perfil_usuario", id_usuario=current_user.id))
@@ -442,11 +463,14 @@ def tirada_diaria():
 
         participacion.ultima_tirada = datetime.now()
 
+    if not lista_liga_carta:
+        flash("No participas en ninguna liga. Únete a una para recibir cartas.")
+        return redirect(url_for("mostrar_ligas"))
+
     current_user.ultima_tirada = hoy
     db.session.commit()
 
     return render_template("tirada_diaria.html", lista_liga_carta=lista_liga_carta)
-
 
 def asignar_carta_aleatoria(id_usuario: int, id_liga: int, rareza: str = None):
     """
@@ -494,4 +518,3 @@ def asignar_carta_aleatoria(id_usuario: int, id_liga: int, rareza: str = None):
     db.session.commit()
 
     return carta
-

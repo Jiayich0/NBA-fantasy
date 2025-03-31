@@ -11,8 +11,8 @@ from flask_login import LoginManager
 db = SQLAlchemy()
 login_manager = LoginManager()
 login_manager.login_view = 'auth.login'
-# FIXME
-#login_manager.login_view = 'sign_in'
+# FIXME: por que funciona el auth.login si no hay ningun blueprint? Preguntar al profe
+#   login_manager.login_view = 'sign_in'
 bootstrap = Bootstrap5()
 csrf = CSRFProtect()
 

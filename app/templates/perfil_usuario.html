@@ -26,7 +26,7 @@ Perfil - {{ usuario.email }}
 
   <h2 class="text-center">Mis Ligas</h2>
   <div class="container">
-    {% for liga in usuario.ligas %}
+    {% for liga in ligas %}
       {{ mostrar_liga(liga, num_usuarios[liga.id], True) }}
     {% else %}
       <p class="text-center">No estás en ninguna liga.</p>

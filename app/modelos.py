@@ -137,7 +137,6 @@ class ParticipaLiga(db.Model):
     liga: Mapped["Liga"] = relationship(back_populates="participa_ligas")
 
 
-# FIXME: Cartaliga.id_usuario apunta a ParticipaLiga.id_usuario o directamente a Usuario.id??? lo mismo con id_liga/id_jugador
 class CartaLiga(db.Model):
     id_liga: Mapped[int] = mapped_column(Integer, ForeignKey(Liga.id), primary_key=True)
     id_usuario: Mapped[int] = mapped_column(Integer, ForeignKey(Usuario.id), primary_key=True)

@@ -243,7 +243,36 @@ def cartas_usuario_en_liga(id_usuario: int, id_liga: int):
     # Para mostrar las cartas de un usuario en una liga, utilizaremos una
     # paginacion de las mismas. Esta funcion devuelve el template
     # "mostrar_cartas_liga_participante.html."
-    abort(501)
+    usuario = db.session.get(Usuario, id_usuario)
+    liga = db.session.get(Liga, id_liga)
+    if usuario is None or liga is None:
+        abort(404)
+
+    paginacion_carta_liga = db.paginate(
+        select(CartaLiga)
+        .where(CartaLiga.id_usuario == id_usuario, CartaLiga.id_liga == id_liga),
+        per_page=8
+    )
+
+    # Para hacer los diccionarios
+    id_cartas = [cl.id_jugador for cl in paginacion_carta_liga.items]
+    cartas = db.session.scalars(
+        select(Carta)
+        .where(Carta.id_jugador.in_(id_cartas))
+        .options(selectinload(Carta.jugador))
+    ).all()
+
+    id2carta = {carta.id_jugador: carta for carta in cartas}
+    id2jugador = {carta.id_jugador: carta.jugador for carta in cartas}
+
+    return render_template(
+        "mostrar_cartas_liga_participante.html",
+        id_usuario=id_usuario,
+        id_liga=id_liga,
+        paginacion_carta_liga=paginacion_carta_liga,
+        id2carta=id2carta,
+        id2jugador=id2jugador
+    )
 
 
 @app.route('/unirse_liga/<int:id_liga>', methods=["GET", "POST"])
@@ -381,24 +410,26 @@ def tirada_diaria():
     # función de la rareza de las cartas y se le añade a las cartas del usuario. Si el usuario ya tenía esa carta,
     # se le suma uno al número de copias. Si es el cumpleaños del usuario, hay que generar una carta de cada categoría.
     # Devuelve como respuesta el template "tirada_diaria.html".
+    hoy = datetime.now().date()
+
+    if (current_user.ultima_tirada is not None and
+            current_user.ultima_tirada.date() == hoy
+    ):
+        flash("Ya has obtenido cartas hoy, vuelve mañana.")
+        return redirect(url_for("perfil_usuario", id_usuario=current_user.id))
+
+    es_cumple = (
+            current_user.cumple.month == hoy.month and
+            current_user.cumple.day == hoy.day
+    )
+
     ligas_participadas = db.session.scalars(
         select(ParticipaLiga)
         .where(ParticipaLiga.id_usuario == current_user.id)
     ).all()
 
-    hoy = datetime.now().date()
-    es_cumple = (
-            current_user.fecha_nacimiento.month == hoy.month and
-            current_user.fecha_nacimiento.day == hoy.day
-    )
-
     lista_liga_carta = []
     for participacion in ligas_participadas:
-        if (participacion.fecha_ultima_tirada is not None and
-                participacion.fecha_ultima_tirada.date() == hoy
-        ):
-            continue
-
         liga = db.session.get(Liga, participacion.id_liga)
         if es_cumple:
             rarezas = ["comun", "infrecuente", "rara", "mitica"]
@@ -409,12 +440,9 @@ def tirada_diaria():
             carta = asignar_carta_aleatoria(current_user.id, participacion.id_liga)
             lista_liga_carta.append((liga, carta))
 
-        participacion.fecha_ultima_tirada = datetime.now()
+        participacion.ultima_tirada = datetime.now()
 
-    if not lista_liga_carta:
-        flash("Ya has obtenido cartas hoy, vuelve mañana.")
-        return redirect(url_for("perfil_usuario", id_usuario=current_user.id))
-
+    current_user.ultima_tirada = hoy
     db.session.commit()
 
     return render_template("tirada_diaria.html", lista_liga_carta=lista_liga_carta)
@@ -449,7 +477,7 @@ def asignar_carta_aleatoria(id_usuario: int, id_liga: int, rareza: str = None):
         select(CartaLiga)
         .where(CartaLiga.id_usuario == id_usuario,
                CartaLiga.id_liga == id_liga,
-               CartaLiga.id_carta == carta.id)
+               CartaLiga.id_jugador == carta.id_jugador)
     )
 
     if carta_liga:
@@ -458,10 +486,12 @@ def asignar_carta_aleatoria(id_usuario: int, id_liga: int, rareza: str = None):
         nueva = CartaLiga(
             id_usuario=id_usuario,
             id_liga=id_liga,
-            id_carta=carta.id,
-            copias=1,
-            puntuacion=carta.puntuacion
+            id_jugador=carta.id_jugador,
+            numero_copias=1
         )
         db.session.add(nueva)
 
+    db.session.commit()
+
     return carta
+

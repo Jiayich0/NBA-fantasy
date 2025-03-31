@@ -27,12 +27,14 @@ y otra con la información de los usuarios (mostrar_liga_completa) -->
         </div>
         {% if participa_en_liga %}
             <div class="col-3 offset-3 text-center justify-content-center">
-                <button type="button" class="btn btn-danger">Ya Participas...</button>
+                <a class="btn btn-danger" role="button" href="{{ url_for('unirse_liga', id_liga=liga.id) }}">
+                    Ya participas... </a>
             </div>
         
         {% elif num_usuarios == liga.numero_participantes_maximo %}
             <div class="col-3 offset-3 text-center justify-content-center">
-                <button type="button" class="btn btn-danger">Liga Completa</button>
+                <a class="btn btn-danger" role="button" href= {{ url_for('unirse_liga', id_liga=liga.id) }}>
+                    Liga completa </a>
             </div>
 
         {% elif current_user.is_authenticated %}

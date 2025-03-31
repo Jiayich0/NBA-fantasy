@@ -105,10 +105,26 @@ class Liga(db.Model):
 
     nombre: Mapped[str] = mapped_column(String(30), nullable=False)
     numero_participantes_maximo: Mapped[int] = mapped_column(Integer, nullable=False)
-    password_hash: Mapped[str] = mapped_column(String, nullable=False)
+    password_hash: Mapped[str] = mapped_column(String, nullable=True)
 
     participa_ligas: Mapped[List["ParticipaLiga"]] = relationship(back_populates="liga")
     cartas_liga: Mapped[List["CartaLiga"]] = relationship(back_populates="liga")
+
+    @property
+    def password(self):
+        raise AttributeError('No se puede leer el atributo password de la liga')
+
+    @password.setter
+    def password(self, password: str) -> None:
+        if password:
+            self.password_hash = generate_password_hash(password)
+        else:
+            self.password_hash = None
+
+    def check_password(self, password: str) -> bool:
+        if self.password_hash is None:
+            return True
+        return check_password_hash(self.password_hash, password)
 
 
 class ParticipaLiga(db.Model):

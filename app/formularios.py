@@ -52,3 +52,8 @@ class SignInForm(FlaskForm):
     )
 
     submit = SubmitField('Submit')
+
+class UnirseLigaForm(FlaskForm):
+    """Formulario para unirse a una liga privada"""
+    password = PasswordField('Contraseña', validators=[DataRequired(message="Introduce la contraseña.")])
+    submit = SubmitField('Unirse')

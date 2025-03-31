@@ -7,11 +7,10 @@ from tkinter.tix import Select
 from flask import current_app as app, render_template, redirect, url_for, flash, abort, request
 from flask_login import login_user, logout_user, login_required, current_user
 from flask_login import login_required
-from sqlalchemy import select, func
+from sqlalchemy import select, func, exists
 from sqlalchemy.orm import load_only, selectinload, joinedload
 from sqlalchemy.exc import IntegrityError
-from typing import List
-from .formularios import SignupForm, SignInForm
+from .formularios import SignupForm, SignInForm, UnirseLigaForm
 from .modelos import Usuario, Jugador, Liga, Historico, Partido, ParticipaLiga
 from . import db, login_manager
 login_manager.login_view = 'sign_in'
@@ -245,6 +244,7 @@ def cartas_usuario_en_liga(id_usuario: int, id_liga: int):
 
 
 @app.route('/unirse_liga/<int:id_liga>', methods=["GET", "POST"])
+@login_required
 def unirse_liga(id_liga: int):
     # Accion de unirse a una liga
     # Debe aceptar tanto métodos "GET" como "POST" (para introducir la contraseña).
@@ -263,7 +263,48 @@ def unirse_liga(id_liga: int):
     # * Si la liga es privada, se renderiza el template "unirse_liga.html" para renderizar el formulario
     #   que introduce la contraseña. Si se valida, el usuario se añade a la liga y se manda el mismo mensaje flash
     #   que el caso anterior. También se le asigna una carta aleatoriamente.
-    abort(501)
+    liga = db.first_or_404(select(Liga).where(Liga.id == id_liga))
+
+    ya_participa = db.session.scalar(
+        select(exists().where(
+            ParticipaLiga.id_usuario == current_user.id,
+            ParticipaLiga.id_liga == id_liga
+        ))
+    )
+    if ya_participa:
+        flash("Ya te has unido a esta liga.")
+        return redirect(url_for("mostrar_ligas"))
+
+    num_participantes = db.session.scalar(
+        select(func.count())
+        .select_from(ParticipaLiga)
+        .where(ParticipaLiga.id_liga == id_liga)
+    )
+    if num_participantes >= liga.numero_participantes_maximo:
+        flash("¡La liga está al máximo!")
+        return redirect(url_for("mostrar_ligas"))
+
+    if liga.password_hash is None:
+        db.session.add(ParticipaLiga(id_usuario=current_user.id, id_liga=id_liga))
+        db.session.commit()
+        flash("Te has unido correctamente a la liga.")
+        # TODO carta aleatoria
+        return redirect(url_for("mostrar_liga", id_liga=liga.id))
+
+    else:
+        form = UnirseLigaForm()
+        if not form.validate_on_submit():
+            return render_template("unirse_liga.html", liga=liga, form=form)
+        else:
+            if not liga.check_password(form.password.data):
+                flash("Contraseña incorrecta.")
+                return render_template("unirse_liga.html", liga=liga, form=form)
+
+            db.session.add(ParticipaLiga(id_usuario=current_user.id, id_liga=id_liga))
+            db.session.commit()
+            flash("Te has unido correctamente a la liga.")
+            # TODO carta aletoria
+            return redirect(url_for("mostrar_liga", id_liga=liga.id))
 
 
 @app.route('/crear_liga', methods=["GET", "POST"])
